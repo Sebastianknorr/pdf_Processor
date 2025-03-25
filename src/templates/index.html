@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Pris-fjerner</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            background-color: #fafafa;
+        }
+        .upload-area.dragover {
+            border-color: #4CAF50;
+            background-color: #E8F5E9;
+        }
+        .file-list {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status.success {
+            background-color: #E8F5E9;
+            color: #2E7D32;
+        }
+        .status.error {
+            background-color: #FFEBEE;
+            color: #C62828;
+        }
+        .download-link {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .download-link:hover {
+            text-decoration: underline;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .button.secondary {
+            background-color: #2196F3;
+        }
+        .button.secondary:hover {
+            background-color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Pris-fjerner</h1>
+        
+        <div class="upload-area" id="dropZone">
+            <p>Dra og slipp PDF-filer her, eller klikk for å velge filer</p>
+            <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;">
+        </div>
+
+        <div class="file-list" id="fileList">
+            <h3>Opplastede filer:</h3>
+            <div id="uploadedFiles"></div>
+        </div>
+
+        <div class="file-list" id="processedFiles">
+            <h3>Behandlede filer:</h3>
+            <div id="processedFilesList"></div>
+        </div>
+
+        <div class="button-group">
+            <button class="button" id="processButton" disabled>Start behandling</button>
+        </div>
+
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadedFiles = document.getElementById('uploadedFiles');
+        const processedFilesList = document.getElementById('processedFilesList');
+        const processButton = document.getElementById('processButton');
+        const status = document.getElementById('status');
+        let uploadedFileCount = 0;
+
+        // Drag and drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            for (const file of files) {
+                if (file.type === 'application/pdf') {
+                    uploadFile(file);
+                } else {
+                    showStatus('Kun PDF-filer er tillatt', 'error');
+                }
+            }
+        }
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showStatus(data.error, 'error');
+                } else {
+                    uploadedFileCount++;
+                    processButton.disabled = false;
+                    addFileToList(file.name, uploadedFiles);
+                    showStatus(`${file.name} ble lastet opp`, 'success');
+                }
+            })
+            .catch(error => {
+                showStatus('Feil ved opplasting av fil', 'error');
+            });
+        }
+
+        function addFileToList(filename, container) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.textContent = filename;
+            container.appendChild(fileItem);
+        }
+
+        processButton.addEventListener('click', () => {
+            processButton.disabled = true;
+            showStatus('Behandler filer...', 'success');
+
+            fetch('/process', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showStatus(data.error, 'error');
+                } else {
+                    showStatus('Filer behandlet!', 'success');
+                    // Update the list immediately with the data from the response
+                    processedFilesList.innerHTML = '';
+                    if (data.files && data.files.length > 0) {
+                        data.files.forEach(filename => {
+                            const fileItem = document.createElement('div');
+                            fileItem.className = 'file-item';
+                            const downloadLink = document.createElement('a');
+                            downloadLink.href = `/download/${filename}`;
+                            downloadLink.className = 'download-link';
+                            downloadLink.textContent = filename;
+                            fileItem.appendChild(downloadLink);
+                            processedFilesList.appendChild(fileItem);
+                        });
+                    } else {
+                        processedFilesList.innerHTML = '<p>Ingen behandlede filer</p>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus('Feil ved behandling av filer', 'error');
+            })
+            .finally(() => {
+                processButton.disabled = false;
+            });
+        });
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        }
+
+        function updateProcessedFilesList() {
+            fetch('/files')
+            .then(response => response.json())
+            .then(data => {
+                processedFilesList.innerHTML = '';
+                if (data.files && data.files.length > 0) {
+                    data.files.forEach(filename => {
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'file-item';
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = `/download/${filename}`;
+                        downloadLink.className = 'download-link';
+                        downloadLink.textContent = filename;
+                        fileItem.appendChild(downloadLink);
+                        processedFilesList.appendChild(fileItem);
+                    });
+                } else {
+                    processedFilesList.innerHTML = '<p>Ingen behandlede filer</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching processed files:', error);
+                processedFilesList.innerHTML = '<p>Feil ved henting av filer</p>';
+            });
+        }
+
+        // Initial load of processed files
+        updateProcessedFilesList();
+    </script>
+</body>
+</html> 
