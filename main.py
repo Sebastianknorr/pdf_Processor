@@ -1,23 +1,29 @@
 from flask import Flask, render_template, request, send_file, jsonify
 import os
 from werkzeug.utils import secure_filename
-from main import PDFProcessor
-import shutil
+from pdf_processor.processor import PDFProcessor
 import logging
-import zipfile
-from io import BytesIO
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'input')
-app.config['OUTPUT_FOLDER'] = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'output')
+# Set up paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+
+app = Flask(__name__, 
+           template_folder=TEMPLATE_DIR,
+           static_folder=STATIC_DIR)
+
+app.config['UPLOAD_FOLDER'] = os.path.join(DATA_DIR, 'input')
+app.config['OUTPUT_FOLDER'] = os.path.join(DATA_DIR, 'output')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'pdf'}
 
-# Ensure upload and output directories exist
+# Ensure data directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 
@@ -53,7 +59,10 @@ def upload_file():
 @app.route('/process', methods=['POST'])
 def process_files():
     try:
-        processor = PDFProcessor()
+        processor = PDFProcessor(
+            input_dir=app.config['UPLOAD_FOLDER'],
+            output_dir=app.config['OUTPUT_FOLDER']
+        )
         processor.process_files()
         
         # Get the list of processed files

@@ -1,38 +1,51 @@
-# PDF Pris-fjerner
+# PDF Processor
 
-Et verktøy som automatisk fjerner priser og prisrelatert informasjon fra PDF-dokumenter.
+En web-applikasjon for å fjerne priser fra PDF-filer.
 
 ## Funksjoner
-- Fjerner priser i ulike formater (f.eks. "12 345,-", "1234,56 kr")
-- Fjerner kampanjeinformasjon og tilhørende priser
-- Fjerner totalsummer og priskolonner
-- Behandler flere PDF-filer automatisk
-- Overvåker input-mappen for nye filer
+
+- Last opp PDF-filer via drag-and-drop eller filvelger
+- Automatisk fjerning av priser fra PDF-dokumenter
+- Last ned behandlede filer
+- Enkel og brukervennlig nettgrensesnitt
 
 ## Installasjon
 
-1. Sørg for at du har Python 3.6 eller nyere installert
-2. Installer nødvendige pakker:
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. Klon repositoriet:
+```bash
+git clone https://github.com/Sebastianknorr/pdf_Processor.git
+cd pdf_processor
+```
 
-## Bruk
+2. Installer avhengigheter:
+```bash
+pip install -r requirements.txt
+```
 
-1. Start programmet:
-   ```bash
-   python src/main.py
-   ```
+## Kjøring
 
-2. Legg PDF-filer i `input`-mappen
-3. Behandlede filer vil dukke opp i `output`-mappen med prefikset "Prosessert_"
-4. Trykk Ctrl+C for å avslutte programmet
+Start applikasjonen:
+```bash
+python main.py
+```
+
+Applikasjonen vil være tilgjengelig på `http://localhost:5002`
 
 ## Mappestruktur
-- `input/`: Legg PDF-filene som skal behandles her
-- `output/`: Behandlede filer lagres her
-- `src/`: Inneholder kildekoden
 
-## Krav
-- Python 3.6+
-- PyMuPDF (fitz)
+```
+pdf_processor/              # Rotmappe for prosjektet
+├── main.py                # Hovedapplikasjonsfil (Flask-appen)
+├── pdf_processor/         # Python-pakkemappe
+│   ├── processor.py      # PDF-prosesseringslogikk
+│   └── __init__.py       # Pakkeinitialisering
+├── static/               # Statiske filer
+├── templates/            # HTML-maler
+└── data/                # Data-mapper
+    ├── input/           # Innkommende PDF-filer
+    └── output/          # Prosesserte PDF-filer
+```
+
+## Lisens
+
+MIT License 
