@@ -3,6 +3,7 @@ import os
 from werkzeug.utils import secure_filename
 from pdf_processor.processor import PDFProcessor
 import logging
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +18,20 @@ DATA_DIR = os.path.join(BASE_DIR, 'data')
 app = Flask(__name__, 
            template_folder=TEMPLATE_DIR,
            static_folder=STATIC_DIR)
+
+# Add ProxyFix middleware to handle HTTPS properly
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# Security headers
+@app.after_request
+def add_security_headers(response):
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+    return response
 
 app.config['UPLOAD_FOLDER'] = os.path.join(DATA_DIR, 'input')
 app.config['OUTPUT_FOLDER'] = os.path.join(DATA_DIR, 'output')
