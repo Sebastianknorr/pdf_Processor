@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Prosessering</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Prosessering</h1>
+        
+        <div class="upload-section">
+            <h2>Last opp PDF-filer</h2>
+            <form id="uploadForm">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".pdf" multiple required>
+                    <label for="fileInput" class="file-label">Velg PDF-filer</label>
+                </div>
+                <div id="selectedFiles" class="selected-files"></div>
+                <button type="submit" class="upload-btn">Last opp</button>
+            </form>
+            <div id="uploadStatus" class="status-message"></div>
+        </div>
+
+        <div class="process-section">
+            <h2>Behandle filer</h2>
+            <button id="processBtn" class="process-btn">Start prosessering</button>
+            <div id="processStatus" class="status-message"></div>
+        </div>
+
+        <div class="files-section">
+            <div class="files-header">
+                <h2>Prosesserte filer</h2>
+                <button id="downloadAllBtn" class="download-all-btn">Last ned alle</button>
+            </div>
+            <div id="filesList" class="files-list"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 

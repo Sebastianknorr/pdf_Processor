@@ -4,6 +4,8 @@ from werkzeug.utils import secure_filename
 from pdf_processor.processor import PDFProcessor
 import logging
 from werkzeug.middleware.proxy_fix import ProxyFix
+import zipfile
+import io
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +44,12 @@ ALLOWED_EXTENSIONS = {'pdf'}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 
+# Create a single PDFProcessor instance
+pdf_processor = PDFProcessor(
+    input_dir=app.config['UPLOAD_FOLDER'],
+    output_dir=app.config['OUTPUT_FOLDER']
+)
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -52,33 +60,36 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'Ingen fil valgt'}), 400
+        if 'files' not in request.files:
+            return jsonify({'error': 'Ingen filer valgt'}), 400
         
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'Ingen fil valgt'}), 400
+        files = request.files.getlist('files')
+        if not files or files[0].filename == '':
+            return jsonify({'error': 'Ingen filer valgt'}), 400
         
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            logger.info(f"File uploaded successfully: {filename}")
-            return jsonify({'message': 'Fil lastet opp', 'filename': filename})
+        uploaded_files = []
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                uploaded_files.append(filename)
+                logger.info(f"File uploaded successfully: {filename}")
+            else:
+                return jsonify({'error': f'Ugyldig filtype: {file.filename}. Kun PDF-filer er tillatt'}), 400
         
-        return jsonify({'error': 'Ugyldig filtype. Kun PDF-filer er tillatt'}), 400
+        return jsonify({
+            'message': f'{len(uploaded_files)} fil(er) lastet opp',
+            'files': uploaded_files
+        })
     except Exception as e:
-        logger.error(f"Error uploading file: {str(e)}")
-        return jsonify({'error': 'Feil ved opplasting av fil'}), 500
+        logger.error(f"Error uploading files: {str(e)}")
+        return jsonify({'error': 'Feil ved opplasting av filer'}), 500
 
 @app.route('/process', methods=['POST'])
 def process_files():
     try:
-        processor = PDFProcessor(
-            input_dir=app.config['UPLOAD_FOLDER'],
-            output_dir=app.config['OUTPUT_FOLDER']
-        )
-        processor.process_files()
+        pdf_processor.process_files()
         
         # Get the list of processed files
         output_files = []
@@ -130,6 +141,33 @@ def list_files():
     except Exception as e:
         logger.error(f"Error listing files: {str(e)}")
         return jsonify({'error': 'Feil ved henting av filer'}), 500
+
+@app.route('/download-all')
+def download_all_files():
+    try:
+        # Create a BytesIO object to store the ZIP file
+        memory_file = io.BytesIO()
+        
+        # Create the ZIP file
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # Add all processed files to the ZIP
+            for filename in os.listdir(app.config['OUTPUT_FOLDER']):
+                if filename.startswith('Prosessert_'):
+                    filepath = os.path.join(app.config['OUTPUT_FOLDER'], filename)
+                    zf.write(filepath, filename)
+        
+        # Seek to the beginning of the BytesIO object
+        memory_file.seek(0)
+        
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name='processed_files.zip'
+        )
+    except Exception as e:
+        logger.error(f"Error creating ZIP file: {str(e)}")
+        return jsonify({'error': 'Feil ved nedlasting av filer'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5002))
